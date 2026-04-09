@@ -17,10 +17,35 @@ Replace this paragraph with your own summary of what your version does.
 
 ## How The System Works
 
-Real world recommenders (like Spotify or YouTube) combine behavior data from many users with song level attributes, then rank items by predicted fit for the current listener and context. My simulation prioritizes transparent, content based matching: songs score higher when they match a user’s preferred genre and mood and are close to the user’s target energy, with an acoustic bonus when the user prefers acoustic tracks. The top recommendations are the songs with the highest total scores.
+Real world recommenders (like Spotify or YouTube) combine multiple signals, but this project uses a transparent content-based approach: each song is scored against one user taste profile, then all songs are ranked by score and the top `k` are recommended.
 
 - `Song` features used in this simulation: `genre`, `mood`, `energy`, `acousticness` (with `title` and `artist` shown in results).
 - `UserProfile` features used in this simulation: `favorite_genre`, `favorite_mood`, `target_energy`, `likes_acoustic`.
+
+### Finalized Algorithm Recipe
+
+1. Load all songs from `data/songs.csv`.
+2. For each song, compute a total score using weighted rules:
+    - `+1.8` if song genre matches `favorite_genre`
+    - `+1.4` if song mood matches `favorite_mood`
+    - Energy similarity points (up to `+2.0`) based on closeness to `target_energy`:
+
+       $$
+       d = |song.energy - target\_energy|,
+       \quad
+       energy\_points = 2.0 \times \left(1 - \frac{d}{0.95 - 0.22}\right)
+       $$
+
+       Clamp `energy_points` to `[0, 2.0]`.
+    - `+0.6` acoustic bonus when `likes_acoustic = True` and `song.acousticness >= 0.65`
+3. Store `(song, score, explanation)` for every song.
+4. Rank songs by score (descending).
+5. Tie-break in this order: smaller energy distance, then higher danceability.
+6. Return top `k` songs.
+
+### Potential Biases / Risks
+
+This system might over-prioritize exact genre matches and miss songs from other genres that still match the user’s mood and energy. It can also favor songs near the chosen energy target while under-recommending stylistically diverse tracks, so users may get a narrower playlist over time.
 
 ```mermaid
 flowchart TD
@@ -42,6 +67,8 @@ flowchart TD
    F -- No --> G
    G --> H
 ```
+
+![alt text](<Screenshot 2026-04-09 at 12.23.23 PM.png>)
 
 ---
 
