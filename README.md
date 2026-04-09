@@ -24,14 +24,14 @@ Real world recommenders (like Spotify or YouTube) combine behavior data from man
 
 ```mermaid
 flowchart TD
-   A[Input: User Preferences<br/>favorite_genre, favorite_mood,<br/>target_energy, likes_acoustic]
-   B[Load Songs from data/songs.csv]
-   C[Start Loop: For each song in CSV]
-   D[Compute Song Score<br/>genre points + mood points +<br/>energy similarity + acoustic bonus]
-   E[Store result: (song, score, explanation)]
-   F{More songs left?}
-   G[Ranking Step<br/>Sort all scored songs by score DESC<br/>Tie-break: closer energy, then danceability]
-   H[Output: Top K Recommendations]
+   A["Input user preferences<br/>favorite_genre favorite_mood<br/>target_energy likes_acoustic"]
+   B["Load songs from data/songs.csv"]
+   C["Loop through each song"]
+   D["Compute score<br/>genre points plus mood points<br/>energy similarity plus acoustic bonus"]
+   E["Store scored song with explanation"]
+   F{"More songs left"}
+   G["Rank all songs by score descending<br/>tie break by energy closeness then danceability"]
+   H["Output top K recommendations"]
 
    A --> D
    B --> C
