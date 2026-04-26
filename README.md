@@ -16,7 +16,7 @@ This matters because most recommender research focuses on accuracy, but not on *
 
 ## Architecture Overview
 
-The system has three layers. See [system_diagram.md](system_diagram.md) for the full Mermaid diagram.
+The system has three layers. See [system_diagram.md](assets/system_diagram.md) for the full Mermaid diagram.
 
 ```
 Natural Language Input
