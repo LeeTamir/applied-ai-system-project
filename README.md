@@ -2,7 +2,7 @@
 
 ## Original Project
 
-**Music Recommender Simulation (Modules 1–3)** — VibeFinder 1.0 was built as a transparent, content-based music recommender. Given a user's preferred genre, mood, energy level, and acoustic preference, it scored every song in an 18-track catalog using a fixed weighted formula and returned the top-k matches with human-readable explanations. The goal was to understand how real-world recommenders translate user taste into ranked outputs, and to surface the biases that simple scoring rules can introduce.
+**Music Recommender Simulation (Project 3)** — VibeFinder 1.0 was built as a transparent, content-based music recommender. Given a user's preferred genre, mood, energy level, and acoustic preference, it scored every song in an 18-track catalog using a fixed weighted formula and returned the top-k matches with human-readable explanations. The goal was to understand how real-world recommenders translate user taste into ranked outputs, and to surface the biases that simple scoring rules can introduce.
 
 ---
 
