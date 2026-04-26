@@ -1,79 +1,54 @@
-# 🎵 Music Recommender Simulation
+# VibeFinder: AI-Enhanced Music Recommender
 
-## Project Summary
+## Original Project
 
-In this project you will build and explain a small music recommender system.
-
-Your goal is to:
-
-- Represent songs and a user "taste profile" as data
-- Design a scoring rule that turns that data into recommendations
-- Evaluate what your system gets right and wrong
-- Reflect on how this mirrors real world AI recommenders
-
-Replace this paragraph with your own summary of what your version does.
+**Music Recommender Simulation (Modules 1–3)** — VibeFinder 1.0 was built as a transparent, content-based music recommender. Given a user's preferred genre, mood, energy level, and acoustic preference, it scored every song in an 18-track catalog using a fixed weighted formula and returned the top-k matches with human-readable explanations. The goal was to understand how real-world recommenders translate user taste into ranked outputs, and to surface the biases that simple scoring rules can introduce.
 
 ---
 
-## How The System Works
+## Title and Summary
 
-Real world recommenders (like Spotify or YouTube) combine multiple signals, but this project uses a transparent content-based approach: each song is scored against one user taste profile, then all songs are ranked by score and the top `k` are recommended.
+**VibeFinder** is a music recommendation system that combines a rules-based content scorer with semantic retrieval powered by `sentence-transformers`. Users can describe what they want to hear in plain English — *"something calm for studying"* — and the system finds songs whose meaning aligns with that description before ranking them by structured feature similarity.
 
-- `Song` features used in this simulation: `genre`, `mood`, `energy`, `acousticness` (with `title` and `artist` shown in results).
-- `UserProfile` features used in this simulation: `favorite_genre`, `favorite_mood`, `target_energy`, `likes_acoustic`.
+This matters because most recommender research focuses on accuracy, but not on **explainability** or **accessibility**. VibeFinder is fully transparent: every recommendation includes a breakdown of exactly why a song was chosen. Adding a natural language front-end means users no longer need to understand internal parameters like `target_energy=0.35` to get useful results.
 
-### Finalized Algorithm Recipe
+---
 
-1. Load all songs from `data/songs.csv`.
-2. For each song, compute a total score using weighted rules:
-    - `+1.8` if song genre matches `favorite_genre`
-    - `+1.4` if song mood matches `favorite_mood`
-    - Energy similarity points (up to `+2.0`) based on closeness to `target_energy`:
+## Architecture Overview
 
-       $$
-       d = |song.energy - target\_energy|,
-       \quad
-       energy\_points = 2.0 \times \left(1 - \frac{d}{0.95 - 0.22}\right)
-       $$
+The system has three layers. See [system_diagram.md](system_diagram.md) for the full Mermaid diagram.
 
-       Clamp `energy_points` to `[0, 2.0]`.
-    - `+0.6` acoustic bonus when `likes_acoustic = True` and `song.acousticness >= 0.65`
-3. Store `(song, score, explanation)` for every song.
-4. Rank songs by score (descending).
-5. Tie-break in this order: smaller energy distance, then higher danceability.
-6. Return top `k` songs.
-
-### Potential Biases / Risks
-
-This system might over-prioritize exact genre matches and miss songs from other genres that still match the user’s mood and energy. It can also favor songs near the chosen energy target while under-recommending stylistically diverse tracks, so users may get a narrower playlist over time.
-
-```mermaid
-flowchart TD
-   A["Input user preferences<br/>favorite_genre favorite_mood<br/>target_energy likes_acoustic"]
-   B["Load songs from data/songs.csv"]
-   C["Loop through each song"]
-   D["Compute score<br/>genre points plus mood points<br/>energy similarity plus acoustic bonus"]
-   E["Store scored song with explanation"]
-   F{"More songs left"}
-   G["Rank all songs by score descending<br/>tie break by energy closeness then danceability"]
-   H["Output top K recommendations"]
-
-   A --> D
-   B --> C
-   C --> D
-   D --> E
-   E --> F
-   F -- Yes --> C
-   F -- No --> G
-   G --> H
+```
+Natural Language Input
+        │
+        ▼
+  Text Encoder (sentence-transformers all-MiniLM-L6-v2)
+        │  encodes query into a dense vector
+        ▼
+  Cosine Similarity Search  ◄──── Pre-encoded Song Embeddings (from songs.csv)
+        │  retrieves semantically closest songs
+        ▼
+  Content-Based Scorer (recommender.py)
+        │  applies weighted rules: genre, mood, energy, acousticness
+        ▼
+  Top-K Results with Explanations
+        │
+        ▼
+  Human Review / pytest Unit Tests
 ```
 
-![alt text](<Screenshot 2026-04-09 at 12.23.23 PM.png>)
-![alt text](<Screenshot 2026-04-09 at 12.32.21 PM.png>)
-![alt text](<Screenshot 2026-04-09 at 12.33.09 PM.png>)
-![alt text](<Screenshot 2026-04-09 at 12.33.46 PM.png>)
-![alt text](<Screenshot 2026-04-09 at 12.34.26 PM.png>)
-![alt text](<Screenshot 2026-04-09 at 12.35.16 PM.png>)
+**RAG component:** The song catalog is the knowledge base. When a user submits a query, the system retrieves the most semantically relevant song descriptions before scoring — the AI is not answering from training knowledge alone, it is retrieving grounded context first.
+
+**Scoring rules (applied after retrieval):**
+
+| Signal | Points |
+|---|---|
+| Genre match | +1.8 |
+| Mood match | +1.4 |
+| Energy closeness | up to +2.0 |
+| Acoustic preference | +0.6 |
+
+Tie-breaks: energy distance first, then danceability.
 
 ---
 
@@ -113,146 +88,207 @@ You can add more tests in `tests/test_recommender.py`.
 
 ---
 
-## Experiments You Tried
+## Sample Interactions
 
-Use this section to document the experiments you ran. For example:
+### Example 1 — Chill Lofi Profile
 
-- What happened when you changed the weight on genre from 2.0 to 0.5
-- What happened when you added tempo or valence to the score
-- How did your system behave for different types of users
+**Input:**
+```python
+genre="lofi", mood="chill", energy=0.35, likes_acoustic=True
+```
+
+**Output:**
+```
+=== Top Recommendations ===
+Profile Name: Chill Lofi
+Profile: genre=lofi | mood=chill | energy=0.35 | likes_acoustic=True
+
+1. Library Rain — Paper Lanterns
+   Score: 5.80
+   Reasons:
+   - genre match (+1.8)
+   - mood match (+1.4)
+   - energy closeness (+2.00)
+   - acoustic preference bonus (+0.6)
+
+2. Midnight Coding — LoRoom
+   Score: 5.61
+   Reasons:
+   - genre match (+1.8)
+   - mood match (+1.4)
+   - energy closeness (+1.81)
+   - acoustic preference bonus (+0.6)
+
+3. Focus Flow — LoRoom
+   Score: 4.26
+   Reasons:
+   - genre match (+1.8)
+   - energy closeness (+1.86)
+   - acoustic preference bonus (+0.6)
+
+4. Spacewalk Thoughts — Orbit Bloom
+   Score: 3.81
+   Reasons:
+   - mood match (+1.4)
+   - energy closeness (+1.81)
+   - acoustic preference bonus (+0.6)
+
+5. Coffee Shop Stories — Slow Stereo
+   Score: 2.55
+   Reasons:
+   - energy closeness (+1.95)
+   - acoustic preference bonus (+0.6)
+```
+
+**Why this makes sense:** Library Rain scores a perfect energy match (0.35 == 0.35), full genre and mood points, and an acoustic bonus — the maximum possible for this profile. Focus Flow earns genre points despite a mood mismatch because it is still a lofi track close to the energy target.
 
 ---
 
-## Limitations and Risks
+### Example 2 — High-Energy Pop Profile
 
-Summarize some limitations of your recommender.
+**Input:**
+```python
+genre="pop", mood="happy", energy=0.88, likes_acoustic=False
+```
 
-Examples:
+**Output:**
+```
+=== Top Recommendations ===
+Profile Name: High-Energy Pop
+Profile: genre=pop | mood=happy | energy=0.88 | likes_acoustic=False
 
-- It only works on a tiny catalog
-- It does not understand lyrics or language
-- It might over favor one genre or mood
+1. Sunrise City — Neon Echo
+   Score: 5.04
+   Reasons:
+   - genre match (+1.8)
+   - mood match (+1.4)
+   - energy closeness (+1.84)
 
-You will go deeper on this in your model card.
+2. Gym Hero — Max Pulse
+   Score: 3.66
+   Reasons:
+   - genre match (+1.8)
+   - energy closeness (+1.86)
+
+3. Rooftop Lights — Indigo Parade
+   Score: 3.07
+   Reasons:
+   - mood match (+1.4)
+   - energy closeness (+1.67)
+
+4. Storm Runner — Voltline
+   Score: 1.92
+   Reasons:
+   - energy closeness (+1.92)
+
+5. Neon Pulse — Vector Drift
+   Score: 1.89
+   Reasons:
+   - energy closeness (+1.89)
+```
+
+**Why this makes sense:** Sunrise City is the only pop/happy song in the catalog — it earns all three primary bonuses. Gym Hero stays in the top 2 because its genre and near-perfect energy outweigh its mood mismatch, a pattern documented in `reflection.md`.
+
+---
+
+### Example 3 — Adversarial: Unknown Genre + Very Low Energy
+
+**Input:**
+```python
+genre="k-pop", mood="chill", energy=0.05, likes_acoustic=True
+```
+
+**Output:**
+```
+=== Top Recommendations ===
+Profile Name: Adversarial: Unknown Genre + Chill + Very Low Energy
+Profile: genre=k-pop | mood=chill | energy=0.05 | likes_acoustic=True
+
+1. Spacewalk Thoughts — Orbit Bloom
+   Score: 3.37
+   Reasons:
+   - mood match (+1.4)
+   - energy closeness (+1.37)
+   - acoustic preference bonus (+0.6)
+
+2. Library Rain — Paper Lanterns
+   Score: 3.18
+   Reasons:
+   - mood match (+1.4)
+   - energy closeness (+1.18)
+   - acoustic preference bonus (+0.6)
+
+3. Midnight Coding — LoRoom
+   Score: 2.99
+   Reasons:
+   - mood match (+1.4)
+   - energy closeness (+0.99)
+   - acoustic preference bonus (+0.6)
+
+4. Winter Sonata — Aurora Quartet
+   Score: 2.13
+   Reasons:
+   - energy closeness (+1.53)
+   - acoustic preference bonus (+0.6)
+
+5. Mountain Letters — Pine Harbor
+   Score: 1.83
+   Reasons:
+   - energy closeness (+1.23)
+   - acoustic preference bonus (+0.6)
+```
+
+**Why this makes sense:** Since "k-pop" does not exist in the catalog, no song earns genre points. The system falls back on mood and energy as primary signals. The result is a coherent ambient/acoustic playlist — not a crash or an error — which validates that the scorer degrades gracefully on out-of-distribution input.
+
+---
+
+## Design Decisions
+
+**Why content-based scoring instead of collaborative filtering?**
+Collaborative filtering requires user interaction history (plays, skips, likes). With 18 songs and no historical data, it would overfit to nothing. Content-based scoring is fully deterministic and explainable with zero training data.
+
+**Why sentence-transformers for RAG instead of an LLM API?**
+An LLM API (like Claude or GPT) would require a paid account and external network access, making the project hard to reproduce. `all-MiniLM-L6-v2` from `sentence-transformers` runs locally, downloads automatically on first use (~90MB), and produces high-quality semantic embeddings for short text. There is no API key and no per-call cost.
+
+**Why expose per-song explanations instead of a single summary?**
+Transparency is a core goal. A single summary hides which features drove a recommendation. Per-song breakdowns let users (and evaluators) verify that the scoring logic is behaving correctly — this is especially important for identifying bias.
+
+**Trade-offs made:**
+- The catalog is small (18 songs). Results are illustrative, not production-grade.
+- Fixed weights (genre: 1.8, mood: 1.4, energy: 2.0) are tuned manually. A real system would learn these from feedback.
+- The RAG retrieval step narrows the candidate set semantically, but the final ranking is still driven by the rule-based scorer — the two layers are not jointly optimized.
+
+---
+
+## Testing Summary
+
+**Automated tests** (`tests/test_recommender.py`) verify that:
+- `recommend_songs()` returns results sorted by score in descending order.
+- The song with the best genre/mood/energy match ranks first.
+- `explain_recommendation()` returns a non-empty string.
+
+Run with `pytest` — all tests pass on the current implementation.
+
+**Manual profile testing** (`src/main.py`) runs five structured profiles covering normal use, edge cases, and adversarial input:
+
+| Profile | What it tests |
+|---|---|
+| High-Energy Pop | Best-case: full genre + mood + energy alignment |
+| Chill Lofi | Acoustic bonus pathway; lofi genre specificity |
+| Deep Intense Rock | High-energy non-pop genre; mood rarity |
+| Conflicted High-Energy Sad | Mood mismatch with strong genre + energy signal |
+| Unknown Genre + Chill + Very Low Energy | Out-of-distribution genre; graceful degradation |
+
+**What worked:** The scorer is directionally valid — changing preferences consistently changes the output in the expected direction. Per-song explanations made it easy to audit results manually.
+
+**What didn't:** The small catalog creates a ceiling effect. For some profiles, positions 3–5 are filled by songs with no genre or mood match, scored purely on energy. In a larger catalog this would not be visible.
+
+**What was learned:** Small weight changes cause larger reorderings than expected. Raising the energy weight by 0.5 moved songs up or down by 2–3 positions. This sensitivity suggests that learned weights (from user feedback) would significantly outperform hand-tuned ones.
 
 ---
 
 ## Reflection
 
-Read and complete `model_card.md`:
+Building VibeFinder clarified something that is easy to miss when using commercial recommenders: the model is not discovering taste, it is measuring a distance defined entirely by whoever chose the features and weights. Every design choice — which features to score, how much weight to assign, what counts as an acoustic song — encodes assumptions about what music listeners care about. Those assumptions can exclude whole categories of users whose preferences do not map cleanly onto the chosen feature space.
 
-[**Model Card**](model_card.md)
-
-Write 1 to 2 paragraphs here about what you learned:
-
-- about how recommenders turn data into predictions
-- about where bias or unfairness could show up in systems like this
-
-
----
-
-## 7. `model_card_template.md`
-
-Combines reflection and model card framing from the Module 3 guidance. :contentReference[oaicite:2]{index=2}  
-
-```markdown
-# 🎧 Model Card - Music Recommender Simulation
-
-## 1. Model Name
-
-Give your recommender a name, for example:
-
-> VibeFinder 1.0
-
----
-
-## 2. Intended Use
-
-- What is this system trying to do
-- Who is it for
-
-Example:
-
-> This model suggests 3 to 5 songs from a small catalog based on a user's preferred genre, mood, and energy level. It is for classroom exploration only, not for real users.
-
----
-
-## 3. How It Works (Short Explanation)
-
-Describe your scoring logic in plain language.
-
-- What features of each song does it consider
-- What information about the user does it use
-- How does it turn those into a number
-
-Try to avoid code in this section, treat it like an explanation to a non programmer.
-
----
-
-## 4. Data
-
-Describe your dataset.
-
-- How many songs are in `data/songs.csv`
-- Did you add or remove any songs
-- What kinds of genres or moods are represented
-- Whose taste does this data mostly reflect
-
----
-
-## 5. Strengths
-
-Where does your recommender work well
-
-You can think about:
-- Situations where the top results "felt right"
-- Particular user profiles it served well
-- Simplicity or transparency benefits
-
----
-
-## 6. Limitations and Bias
-
-Where does your recommender struggle
-
-Some prompts:
-- Does it ignore some genres or moods
-- Does it treat all users as if they have the same taste shape
-- Is it biased toward high energy or one genre by default
-- How could this be unfair if used in a real product
-
----
-
-## 7. Evaluation
-
-How did you check your system
-
-Examples:
-- You tried multiple user profiles and wrote down whether the results matched your expectations
-- You compared your simulation to what a real app like Spotify or YouTube tends to recommend
-- You wrote tests for your scoring logic
-
-You do not need a numeric metric, but if you used one, explain what it measures.
-
----
-
-## 8. Future Work
-
-If you had more time, how would you improve this recommender
-
-Examples:
-
-- Add support for multiple users and "group vibe" recommendations
-- Balance diversity of songs instead of always picking the closest match
-- Use more features, like tempo ranges or lyric themes
-
----
-
-## 9. Personal Reflection
-
-A few sentences about what you learned:
-
-- What surprised you about how your system behaved
-- How did building this change how you think about real music recommenders
-- Where do you think human judgment still matters, even if the model seems "smart"
-
+Adding the RAG layer reinforced a different lesson: retrieval and generation are more useful when they stay coupled to grounded data. Rather than letting a language model hallucinate a playlist, the system retrieves semantically plausible candidates first and then applies transparent scoring. The result is easier to audit, easier to debug, and easier to trust — qualities that matter as much in a student project as they do in a production system.
