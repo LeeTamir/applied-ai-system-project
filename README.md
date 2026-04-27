@@ -2,7 +2,7 @@
 
 ## Base Project
 
-**Music Recommender Simulation (Module 1–3)** — VibeFinder 1.0 was built as a transparent, content-based music recommender. Given a user's preferred genre, mood, energy level, and acoustic preference, it scored every song in an 18-track catalog using a fixed weighted formula and returned the top-k matches with human-readable explanations. The goal was to understand how real-world recommenders translate user taste into ranked outputs, and to surface the biases that simple scoring rules can introduce.
+**Music Recommender Simulation (Project 3)** — VibeFinder 1.0 was built as a transparent, content-based music recommender. Given a user's preferred genre, mood, energy level, and acoustic preference, it scored every song in an 18-track catalog using a fixed weighted formula and returned the top-k matches with human-readable explanations. The goal was to understand how real-world recommenders translate user taste into ranked outputs, and to surface the biases that simple scoring rules can introduce.
 
 This project (VibeFinder 2.0) extends that foundation by adding a **RAG-powered natural language interface**, a **hybrid scoring layer** that combines semantic similarity with CSV feature values, **genre detection**, a **Streamlit web UI**, and a **full unit test suite**.
 
@@ -12,7 +12,7 @@ This project (VibeFinder 2.0) extends that foundation by adding a **RAG-powered 
 
 **VibeFinder** is a music recommendation system that lets users describe what they want to hear in plain English — *"something calm and acoustic for studying"* — and returns the best matches from a 50-song catalog. It works in two modes:
 
-- **Structured mode** (`src/recommender.py`): the original rules-based scorer from Module 1–3, still available via `src/main.py`
+- **Structured mode** (`src/recommender.py`): the original rules-based scorer from Project 3, still available via `src/main.py`
 - **RAG + Hybrid mode** (`src/rag_retriever.py` + `app.py`): semantic retrieval combined with numeric feature re-ranking, exposed through a Streamlit web app
 
 The system is fully transparent: every result shows which signals were detected and why each song was chosen.
