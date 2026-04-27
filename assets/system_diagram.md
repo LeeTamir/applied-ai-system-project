@@ -1,63 +1,67 @@
-# System Diagram: VibeFinder 1.0 with RAG
+# System Diagram: VibeFinder with RAG
 
 ```mermaid
 flowchart TD
     subgraph INPUT["Input Layer"]
-        A["👤 User\nNatural language vibe description\ne.g. 'something chill for studying'"]
+        A["👤 User\nNatural language query\ne.g. 'something calm for studying'"]
         A2["👤 User\nStructured preferences\ne.g. genre=lofi, energy=0.35"]
     end
 
-    subgraph RAG["RAG Retrieval Layer\n(sentence-transformers)"]
-        B["Text Encoder\nEncodes user query\ninto embedding vector"]
-        C["Song Embeddings\nPre-encoded song descriptions\nstored as vectors"]
-        D["Cosine Similarity Search\nFinds semantically closest songs\nfrom catalog"]
+    subgraph RAG["RAG Mode  ·  src/rag_retriever.py"]
+        B["song_to_text()\nConverts each song to a\nnatural language description"]
+        C["RAGRetriever.index_songs()\nEncodes all song descriptions\ninto dense vectors\n(all-MiniLM-L6-v2)"]
+        D["RAGRetriever.retrieve()\nEncodes query · cosine similarity\nreturns top-N matches with scores"]
+        R["RAG Output\nTitle · Artist · Genre · Mood · Energy\nSemantic similarity score"]
     end
 
-    subgraph SCORING["Content-Based Scoring Layer\n(recommender.py)"]
+    subgraph SCORING["Structured Mode  ·  src/recommender.py"]
         E["score_song()\nGenre match +1.8\nMood match +1.4\nEnergy closeness up to +2.0\nAcoustic bonus +0.6"]
-        F["recommend_songs()\nRanks all songs by score\nTie-breaks by energy distance\nthen danceability"]
+        F["recommend_songs()\nRanks all songs by score descending\nReturns top-K with explanations"]
+        S["Structured Output\nTitle · Artist · Score\nPer-signal reason breakdown"]
     end
 
-    subgraph DATA["Data Layer"]
-        G[("data/songs.csv\n18 songs\ngenre · mood · energy\ntempo · valence\ndanceability · acousticness")]
+    subgraph DATA["Data Layer  ·  data/songs.csv"]
+        G[("18 songs\ngenre · mood · energy\ntempo · valence\ndanceability · acousticness")]
     end
 
-    subgraph OUTPUT["Output Layer"]
-        H["Top-K Recommendations\nTitle · Artist · Score\nExplanation per song"]
+    subgraph TESTING["Evaluation Layer"]
+        T1["pytest\ntests/test_recommender.py\nUnit tests: sort order, explanations"]
+        T2["👤 Human Review\nreflection.md · model_card.md\nDirectional validity checks"]
+        T3["5 Structured Profiles\nin main.py: normal · edge · adversarial"]
+        T4["3 RAG Queries\nin main.py: calm · energetic · moody"]
     end
 
-    subgraph TESTING["Human & Automated Evaluation"]
-        T1["pytest\ntests/test_recommender.py\nUnit tests for scoring logic"]
-        T2["👤 Human Review\nProfile comparison analysis\nreflection.md · model_card.md"]
-        T3["Manual Profile Tests\n5 test profiles in main.py\nDirectional validity checks"]
-    end
-
-    A -->|"natural language query"| B
+    A  -->|"natural language"| D
     A2 -->|"structured prefs"| E
-    B --> D
-    C --> D
-    G -->|"load songs"| C
-    G -->|"load songs"| E
-    D -->|"candidate songs"| E
-    E --> F
-    F --> H
-    H -->|"results"| T2
-    E -->|"scoring function"| T1
-    F -->|"ranked output"| T3
-    T1 -->|"pass/fail"| T2
+
+    G  -->|"load songs"| B
+    G  -->|"load songs"| E
+
+    B  --> C
+    C  -->|"embedding index"| D
+    D  --> R
+
+    E  --> F
+    F  --> S
+
+    R  -->|"RAG results"| T4
+    S  -->|"ranked output"| T3
+    E  -->|"score_song + Recommender class"| T1
+    T1 -->|"pass / fail"| T2
     T3 -->|"observations"| T2
+    T4 -->|"observations"| T2
 ```
 
 ## Component Descriptions
 
-| Component | Role |
-|---|---|
-| **Text Encoder** | Converts natural language input into a dense vector using `sentence-transformers` (`all-MiniLM-L6-v2`) |
-| **Song Embeddings** | Pre-encoded text representations of each song's features, enabling semantic search |
-| **Cosine Similarity Search** | RAG retrieval step — finds songs whose meaning is closest to the user's query |
-| **score_song()** | Rules-based scorer applying weighted feature matching against a structured UserProfile |
-| **recommend_songs()** | Aggregates scores, ranks, and returns top-k results with explanations |
-| **data/songs.csv** | Knowledge base — 18 songs with 10 features each |
-| **pytest** | Automated unit tests for scoring correctness |
-| **Human Review** | Manual profile comparison and model card evaluation by a person |
-| **Manual Profile Tests** | 5 hardcoded test profiles in main.py used to check directional validity |
+| Component | File | Role |
+|---|---|---|
+| **song_to_text()** | `src/rag_retriever.py` | Converts a song dict to a text description for embedding (e.g. `"Library Rain by Paper Lanterns - lofi chill very low energy acoustic"`) |
+| **RAGRetriever.index_songs()** | `src/rag_retriever.py` | Pre-encodes all 18 songs into dense vectors using `all-MiniLM-L6-v2` at startup |
+| **RAGRetriever.retrieve()** | `src/rag_retriever.py` | Encodes the natural language query, runs cosine similarity against song embeddings, returns top-N matches |
+| **score_song()** | `src/recommender.py` | Rules-based scorer — awards weighted points for genre, mood, energy closeness, and acoustic preference |
+| **recommend_songs()** | `src/recommender.py` | Scores every song in the catalog, sorts descending, returns top-K with per-signal explanations |
+| **Recommender class** | `src/recommender.py` | OOP wrapper used by unit tests — delegates to `score_song()` internally |
+| **data/songs.csv** | `data/` | Knowledge base — 18 songs, 10 features each — shared by both modes |
+| **pytest** | `tests/` | Automated unit tests for sort order and explanation correctness |
+| **Human Review** | `reflection.md`, `model_card.md` | Manual evaluation of directional validity across profiles |

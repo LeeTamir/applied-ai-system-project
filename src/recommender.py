@@ -39,12 +39,42 @@ class Recommender:
         self.songs = songs
 
     def recommend(self, user: UserProfile, k: int = 5) -> List[Song]:
-        # TODO: Implement recommendation logic
-        return self.songs[:k]
+        user_prefs = {
+            "favorite_genre": user.favorite_genre,
+            "favorite_mood": user.favorite_mood,
+            "target_energy": user.target_energy,
+            "likes_acoustic": user.likes_acoustic,
+        }
+        scored: List[Tuple[Song, float]] = []
+        for song in self.songs:
+            song_dict = {
+                "genre": song.genre,
+                "mood": song.mood,
+                "energy": song.energy,
+                "acousticness": song.acousticness,
+                "danceability": song.danceability,
+            }
+            song_score, _ = score_song(user_prefs, song_dict)
+            scored.append((song, song_score))
+        scored.sort(key=lambda item: item[1], reverse=True)
+        return [s for s, _ in scored[:k]]
 
     def explain_recommendation(self, user: UserProfile, song: Song) -> str:
-        # TODO: Implement explanation logic
-        return "Explanation placeholder"
+        user_prefs = {
+            "favorite_genre": user.favorite_genre,
+            "favorite_mood": user.favorite_mood,
+            "target_energy": user.target_energy,
+            "likes_acoustic": user.likes_acoustic,
+        }
+        song_dict = {
+            "genre": song.genre,
+            "mood": song.mood,
+            "energy": song.energy,
+            "acousticness": song.acousticness,
+            "danceability": song.danceability,
+        }
+        _, reasons = score_song(user_prefs, song_dict)
+        return "; ".join(reasons)
 
 def load_songs(csv_path: str) -> List[Dict]:
     """Load songs from a CSV file into a list of dictionaries."""
