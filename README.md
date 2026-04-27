@@ -1,54 +1,60 @@
 # VibeFinder: AI-Enhanced Music Recommender
 
-## Original Project
+## Base Project
 
-**Music Recommender Simulation (Project 3)** — VibeFinder 1.0 was built as a transparent, content-based music recommender. Given a user's preferred genre, mood, energy level, and acoustic preference, it scored every song in an 18-track catalog using a fixed weighted formula and returned the top-k matches with human-readable explanations. The goal was to understand how real-world recommenders translate user taste into ranked outputs, and to surface the biases that simple scoring rules can introduce.
+**Music Recommender Simulation (Module 1–3)** — VibeFinder 1.0 was built as a transparent, content-based music recommender. Given a user's preferred genre, mood, energy level, and acoustic preference, it scored every song in an 18-track catalog using a fixed weighted formula and returned the top-k matches with human-readable explanations. The goal was to understand how real-world recommenders translate user taste into ranked outputs, and to surface the biases that simple scoring rules can introduce.
+
+This project (VibeFinder 2.0) extends that foundation by adding a **RAG-powered natural language interface**, a **hybrid scoring layer** that combines semantic similarity with CSV feature values, **genre detection**, a **Streamlit web UI**, and a **full unit test suite**.
 
 ---
 
 ## Title and Summary
 
-**VibeFinder** is a music recommendation system that combines a rules-based content scorer with semantic retrieval powered by `sentence-transformers`. Users can describe what they want to hear in plain English — *"something calm for studying"* — and the system finds songs whose meaning aligns with that description before ranking them by structured feature similarity.
+**VibeFinder** is a music recommendation system that lets users describe what they want to hear in plain English — *"something calm and acoustic for studying"* — and returns the best matches from a 50-song catalog. It works in two modes:
 
-This matters because most recommender research focuses on accuracy, but not on **explainability** or **accessibility**. VibeFinder is fully transparent: every recommendation includes a breakdown of exactly why a song was chosen. Adding a natural language front-end means users no longer need to understand internal parameters like `target_energy=0.35` to get useful results.
+- **Structured mode** (`src/recommender.py`): the original rules-based scorer from Module 1–3, still available via `src/main.py`
+- **RAG + Hybrid mode** (`src/rag_retriever.py` + `app.py`): semantic retrieval combined with numeric feature re-ranking, exposed through a Streamlit web app
+
+The system is fully transparent: every result shows which signals were detected and why each song was chosen.
 
 ---
 
 ## Architecture Overview
 
-The system has three layers. See [system_diagram.md](assets/system_diagram.md) for the full Mermaid diagram.
+See [assets/system_diagram.md](assets/system_diagram.md) for the full Mermaid diagram.
 
 ```
-Natural Language Input
+Natural Language Query (e.g. "a happy rnb song")
         │
         ▼
-  Text Encoder (sentence-transformers all-MiniLM-L6-v2)
+  Text Encoder: multi-qa-MiniLM-L6-cos-v1
         │  encodes query into a dense vector
         ▼
-  Cosine Similarity Search  ◄──── Pre-encoded Song Embeddings (from songs.csv)
-        │  retrieves semantically closest songs
+  Cosine Similarity Search  ◄──── Pre-encoded Song Embeddings (songs.csv)
+        │  RAG retrieval step
         ▼
-  Content-Based Scorer (recommender.py)
-        │  applies weighted rules: genre, mood, energy, acousticness
+  Feature Signal Detection
+        │  keyword scan → maps query terms to CSV columns (energy, valence, etc.)
+        │  genre detection → binary genre match signal
         ▼
-  Top-K Results with Explanations
-        │
+  Hybrid Re-ranking
+        │  hybrid_score = 0.5 × semantic_similarity + 0.5 × feature_score
         ▼
-  Human Review / pytest Unit Tests
+  Top-K Results  →  Streamlit UI (app.py)
 ```
 
-**RAG component:** The song catalog is the knowledge base. When a user submits a query, the system retrieves the most semantically relevant song descriptions before scoring — the AI is not answering from training knowledge alone, it is retrieving grounded context first.
+**RAG component:** The 50-song catalog is the knowledge base. Every song is pre-encoded into a dense vector at startup using `song_to_text()`, which converts structured CSV data into natural language sentences. At query time, the user's input is encoded the same way and compared by cosine similarity — the system retrieves grounded catalog data rather than relying on model training knowledge.
 
-**Scoring rules (applied after retrieval):**
+**Hybrid scoring:** When feature keywords are detected in the query (e.g. *"energetic"* → `energy ↑`, *"acoustic"* → `acousticness ↑`, *"rnb"* → `genre:rnb`), the semantic score is blended with a numeric feature score computed directly from the CSV. When no signals are detected, the result falls back to pure semantic ranking.
+
+**Structured scoring rules (base project, `recommender.py`):**
 
 | Signal | Points |
 |---|---|
 | Genre match | +1.8 |
 | Mood match | +1.4 |
 | Energy closeness | up to +2.0 |
-| Acoustic preference | +0.6 |
-
-Tie-breaks: energy distance first, then danceability.
+| Acoustic preference bonus | +0.6 |
 
 ---
 
@@ -56,234 +62,184 @@ Tie-breaks: energy distance first, then danceability.
 
 ### Setup
 
-1. Create a virtual environment (optional but recommended):
+1. Create a virtual environment (recommended):
 
    ```bash
    python -m venv .venv
-   source .venv/bin/activate      # Mac or Linux
+   source .venv/bin/activate      # Mac / Linux
    .venv\Scripts\activate         # Windows
    ```
 
-2. Install dependencies
+2. Install dependencies:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+### Run the Streamlit App
 
 ```bash
-pip install -r requirements.txt
+streamlit run app.py
 ```
 
-3. Run the app:
+Opens at `http://localhost:8501`. Type a natural language description, choose how many results to return, and click **Find Songs**.
+
+### Run the CLI (Structured Mode)
 
 ```bash
 python -m src.main
 ```
 
-### Running Tests
+Runs five structured profiles (normal, edge case, adversarial) through the rules-based scorer and prints scored results with explanations.
 
-Run the starter tests with:
+### Run Tests
 
 ```bash
 pytest
 ```
 
-You can add more tests in `tests/test_recommender.py`.
+94 tests across two files — all pass in under 5 seconds with no model download required.
 
 ---
 
-## Sample Interactions
+## Feature Signal Detection
 
-### Example 1 — Chill Lofi Profile
+The system scans the query for keywords that map to CSV columns:
 
-**Input:**
-```python
-genre="lofi", mood="chill", energy=0.35, likes_acoustic=True
-```
+| Keyword examples | Feature boosted |
+|---|---|
+| *energetic, workout, pump, hype* | `energy ↑` |
+| *calm, chill, study, rainy, sleep* | `energy ↓` |
+| *acoustic, unplugged, folk, organic* | `acousticness ↑` |
+| *electronic, synth, edm, digital* | `acousticness ↓` |
+| *happy, uplifting, feel-good, bright* | `valence ↑` |
+| *sad, dark, melancholic, heartbreak* | `valence ↓` |
+| *dance, groove, party, bop, club* | `danceability ↑` |
+| *high bpm, uptempo, fast tempo* | `tempo_bpm ↑` |
+| *slow bpm, downtempo, low tempo* | `tempo_bpm ↓` |
 
-**Output:**
-```
-=== Top Recommendations ===
-Profile Name: Chill Lofi
-Profile: genre=lofi | mood=chill | energy=0.35 | likes_acoustic=True
+Genre names are detected separately (pop, lofi, rock, jazz, rnb, hip hop, metal, edm, folk, country, reggae, synthwave, classical, indie pop, ambient). Longer phrases are checked before shorter ones — *"indie pop"* will not accidentally match as plain *"pop"*.
 
-1. Library Rain — Paper Lanterns
-   Score: 5.80
-   Reasons:
-   - genre match (+1.8)
-   - mood match (+1.4)
-   - energy closeness (+2.00)
-   - acoustic preference bonus (+0.6)
-
-2. Midnight Coding — LoRoom
-   Score: 5.61
-   Reasons:
-   - genre match (+1.8)
-   - mood match (+1.4)
-   - energy closeness (+1.81)
-   - acoustic preference bonus (+0.6)
-
-3. Focus Flow — LoRoom
-   Score: 4.26
-   Reasons:
-   - genre match (+1.8)
-   - energy closeness (+1.86)
-   - acoustic preference bonus (+0.6)
-
-4. Spacewalk Thoughts — Orbit Bloom
-   Score: 3.81
-   Reasons:
-   - mood match (+1.4)
-   - energy closeness (+1.81)
-   - acoustic preference bonus (+0.6)
-
-5. Coffee Shop Stories — Slow Stereo
-   Score: 2.55
-   Reasons:
-   - energy closeness (+1.95)
-   - acoustic preference bonus (+0.6)
-```
-
-**Why this makes sense:** Library Rain scores a perfect energy match (0.35 == 0.35), full genre and mood points, and an acoustic bonus — the maximum possible for this profile. Focus Flow earns genre points despite a mood mismatch because it is still a lofi track close to the energy target.
+Tags displayed under each result reflect what was detected: if the query mentioned danceability, the song shows its `dance` value; if nothing was detected, it falls back to showing `energy`.
 
 ---
 
-### Example 2 — High-Energy Pop Profile
+## Song Catalog
 
-**Input:**
-```python
-genre="pop", mood="happy", energy=0.88, likes_acoustic=False
-```
+The catalog lives in `data/songs.csv` — 50 songs, 10 features each:
 
-**Output:**
-```
-=== Top Recommendations ===
-Profile Name: High-Energy Pop
-Profile: genre=pop | mood=happy | energy=0.88 | likes_acoustic=False
+| Field | Type | Description |
+|---|---|---|
+| `id` | int | Unique identifier |
+| `title` | str | Song title |
+| `artist` | str | Artist name |
+| `genre` | str | One of 15 genres |
+| `mood` | str | One of 15 moods |
+| `energy` | float [0–1] | Intensity level |
+| `tempo_bpm` | float | Beats per minute |
+| `valence` | float [0–1] | Emotional positivity |
+| `danceability` | float [0–1] | Rhythm suitability |
+| `acousticness` | float [0–1] | Acoustic vs. electronic |
 
-1. Sunrise City — Neon Echo
-   Score: 5.04
-   Reasons:
-   - genre match (+1.8)
-   - mood match (+1.4)
-   - energy closeness (+1.84)
-
-2. Gym Hero — Max Pulse
-   Score: 3.66
-   Reasons:
-   - genre match (+1.8)
-   - energy closeness (+1.86)
-
-3. Rooftop Lights — Indigo Parade
-   Score: 3.07
-   Reasons:
-   - mood match (+1.4)
-   - energy closeness (+1.67)
-
-4. Storm Runner — Voltline
-   Score: 1.92
-   Reasons:
-   - energy closeness (+1.92)
-
-5. Neon Pulse — Vector Drift
-   Score: 1.89
-   Reasons:
-   - energy closeness (+1.89)
-```
-
-**Why this makes sense:** Sunrise City is the only pop/happy song in the catalog — it earns all three primary bonuses. Gym Hero stays in the top 2 because its genre and near-perfect energy outweigh its mood mismatch, a pattern documented in `reflection.md`.
+Genre distribution: ambient ×3, classical ×2, country ×3, edm ×3, folk ×3, hip hop ×4, indie pop ×3, jazz ×3, lofi ×6, metal ×3, pop ×5, reggae ×2, rnb ×4, rock ×3, synthwave ×3.
 
 ---
 
-### Example 3 — Adversarial: Unknown Genre + Very Low Energy
+## Sample Interactions (Streamlit)
 
-**Input:**
-```python
-genre="k-pop", mood="chill", energy=0.05, likes_acoustic=True
+### Query: "something calm and acoustic for studying on a rainy day"
+
+**Detected signals:** `energy ↓`, `acousticness ↑`
+
+| # | Song | Tags |
+|---|---|---|
+| 1 | Library Rain — Paper Lanterns | `lofi` · `chill` · `energy 0.35` · `acoustic 0.86` |
+| 2 | Spacewalk Thoughts — Orbit Bloom | `ambient` · `chill` · `energy 0.28` · `acoustic 0.92` |
+| 3 | Mountain Letters — Pine Harbor | `folk` · `reflective` · `energy 0.33` · `acoustic 0.88` |
+
+### Query: "a happy rnb song"
+
+**Detected signals:** `valence ↑`, `genre:rnb`
+
+| # | Song | Tags |
+|---|---|---|
+| 1 | Velvet Hours — Luna Vale | `rnb` · `romantic` · `valence 0.73` |
+| 2 | Afterglow — Luna Vale | `rnb` · `romantic` · `valence 0.78` |
+| 3 | Honey & Smoke — Amber Vale | `rnb` · `romantic` · `valence 0.76` |
+
+### Query: "energetic workout pump"
+
+**Detected signals:** `energy ↑`, `danceability ↑`
+
+| # | Song | Tags |
+|---|---|---|
+| 1 | Gym Hero — Max Pulse | `pop` · `intense` · `energy 0.93` · `dance 0.88` |
+| 2 | Neon Pulse — Vector Drift | `edm` · `euphoric` · `energy 0.92` · `dance 0.91` |
+| 3 | Shatter — Iron Lung | `metal` · `aggressive` · `energy 0.97` · `dance 0.54` |
+
+---
+
+## Project Structure
+
 ```
-
-**Output:**
+applied-ai-system-final/
+├── app.py                     # Streamlit web UI
+├── data/
+│   └── songs.csv              # 50-song catalog (10 features each)
+├── src/
+│   ├── main.py                # CLI: structured profile runner
+│   ├── recommender.py         # Base project: rules-based scorer + Recommender class
+│   └── rag_retriever.py       # RAG retriever + hybrid scoring + genre/feature detection
+├── tests/
+│   ├── test_recommender.py    # 22 unit tests for recommender.py
+│   └── test_rag_retriever.py  # 72 unit tests for rag_retriever.py
+├── assets/
+│   └── system_diagram.md      # Mermaid architecture diagram
+├── model_card.md              # Limitations, bias, misuse, AI collaboration reflection
+├── reflection.md              # Manual profile comparison notes (base project)
+├── requirements.txt
+├── pytest.ini
+└── .streamlit/
+    └── config.toml            # fileWatcherType=none (suppresses torchvision warnings)
 ```
-=== Top Recommendations ===
-Profile Name: Adversarial: Unknown Genre + Chill + Very Low Energy
-Profile: genre=k-pop | mood=chill | energy=0.05 | likes_acoustic=True
-
-1. Spacewalk Thoughts — Orbit Bloom
-   Score: 3.37
-   Reasons:
-   - mood match (+1.4)
-   - energy closeness (+1.37)
-   - acoustic preference bonus (+0.6)
-
-2. Library Rain — Paper Lanterns
-   Score: 3.18
-   Reasons:
-   - mood match (+1.4)
-   - energy closeness (+1.18)
-   - acoustic preference bonus (+0.6)
-
-3. Midnight Coding — LoRoom
-   Score: 2.99
-   Reasons:
-   - mood match (+1.4)
-   - energy closeness (+0.99)
-   - acoustic preference bonus (+0.6)
-
-4. Winter Sonata — Aurora Quartet
-   Score: 2.13
-   Reasons:
-   - energy closeness (+1.53)
-   - acoustic preference bonus (+0.6)
-
-5. Mountain Letters — Pine Harbor
-   Score: 1.83
-   Reasons:
-   - energy closeness (+1.23)
-   - acoustic preference bonus (+0.6)
-```
-
-**Why this makes sense:** Since "k-pop" does not exist in the catalog, no song earns genre points. The system falls back on mood and energy as primary signals. The result is a coherent ambient/acoustic playlist — not a crash or an error — which validates that the scorer degrades gracefully on out-of-distribution input.
 
 ---
 
 ## Design Decisions
 
-**Why content-based scoring instead of collaborative filtering?**
-Collaborative filtering requires user interaction history (plays, skips, likes). With 18 songs and no historical data, it would overfit to nothing. Content-based scoring is fully deterministic and explainable with zero training data.
+**Why `multi-qa-MiniLM-L6-cos-v1` instead of `all-MiniLM-L6-v2`?**
+`all-MiniLM-L6-v2` is a symmetric model trained to compare sentence pairs of similar length. Matching a short user query against longer song descriptions is an *asymmetric* retrieval task. `multi-qa-MiniLM-L6-cos-v1` is specifically trained for query-document retrieval, which produced meaningfully higher semantic scores (~60–70% peak vs ~35% peak) for the same catalog.
 
-**Why sentence-transformers for RAG instead of an LLM API?**
-An LLM API (like Claude or GPT) would require a paid account and external network access, making the project hard to reproduce. `all-MiniLM-L6-v2` from `sentence-transformers` runs locally, downloads automatically on first use (~90MB), and produces high-quality semantic embeddings for short text. There is no API key and no per-call cost.
+**Why hybrid scoring instead of pure semantic retrieval?**
+The semantic model encodes meaning well but cannot reliably distinguish a song with `energy=0.28` from one with `energy=0.82` — those values live in CSV columns, not in the text description. Hybrid scoring feeds the actual numeric CSV values into the ranking formula, so feature-keyword queries (e.g. *"high bpm"*) produce results that reflect the real data.
 
-**Why expose per-song explanations instead of a single summary?**
-Transparency is a core goal. A single summary hides which features drove a recommendation. Per-song breakdowns let users (and evaluators) verify that the scoring logic is behaving correctly — this is especially important for identifying bias.
+**Why keyword-based feature detection instead of an LLM?**
+An LLM-based feature extractor would require an API key and external network access. Keyword scanning is deterministic, auditable, and runs instantly. The trade-off is brittleness: negation phrases like "not energetic" will not correctly flip the signal. This is documented as a known limitation in `model_card.md`.
 
-**Trade-offs made:**
-- The catalog is small (18 songs). Results are illustrative, not production-grade.
-- Fixed weights (genre: 1.8, mood: 1.4, energy: 2.0) are tuned manually. A real system would learn these from feedback.
-- The RAG retrieval step narrows the candidate set semantically, but the final ranking is still driven by the rule-based scorer — the two layers are not jointly optimized.
+**Why sentence-transformers instead of a paid LLM API?**
+`sentence-transformers` runs locally, downloads once (~22MB), and has no per-call cost. It is fully reproducible without accounts or credentials.
+
+**Why expose dynamic feature tags in the UI?**
+Showing the feature that was actually detected (e.g. `dance 0.91` when danceability was queried) closes the loop for the user — they can see that the system understood their query and which specific CSV value it acted on.
 
 ---
 
 ## Testing Summary
 
-**Automated tests** (`tests/test_recommender.py`) verify that:
-- `recommend_songs()` returns results sorted by score in descending order.
-- The song with the best genre/mood/energy match ranks first.
-- `explain_recommendation()` returns a non-empty string.
+**94 automated tests** across two files — run with `pytest` in under 5 seconds:
 
-Run with `pytest` — all tests pass on the current implementation.
+| File | Tests | What is covered |
+|---|---|---|
+| `tests/test_recommender.py` | 22 | `score_song` signal accumulation, acoustic bonus conditions, energy closeness math, `recommend_songs` sort order and k-limits, `Recommender` class explain output |
+| `tests/test_rag_retriever.py` | 72 | `song_to_text` energy labels and acoustic phrases; `_detect_genre` aliases and longest-match priority; `_detect_features` positive/negative keyword routing; `_compute_feature_score` direction scoring, genre binary match, BPM normalization and clamping; `retrieve` / `hybrid_retrieve` guard clauses, sort order, detected signals, semantic fallback, genre and energy boosting |
 
-**Manual profile testing** (`src/main.py`) runs five structured profiles covering normal use, edge cases, and adversarial input:
+The RAG retriever tests use identity-matrix torch embeddings and a mock encoder — no model download required to run the suite.
 
-| Profile | What it tests |
-|---|---|
-| High-Energy Pop | Best-case: full genre + mood + energy alignment |
-| Chill Lofi | Acoustic bonus pathway; lofi genre specificity |
-| Deep Intense Rock | High-energy non-pop genre; mood rarity |
-| Conflicted High-Energy Sad | Mood mismatch with strong genre + energy signal |
-| Unknown Genre + Chill + Very Low Energy | Out-of-distribution genre; graceful degradation |
-
-**What worked:** The scorer is directionally valid — changing preferences consistently changes the output in the expected direction. Per-song explanations made it easy to audit results manually.
-
-**What didn't:** The small catalog creates a ceiling effect. For some profiles, positions 3–5 are filled by songs with no genre or mood match, scored purely on energy. In a larger catalog this would not be visible.
-
-**What was learned:** Small weight changes cause larger reorderings than expected. Raising the energy weight by 0.5 moved songs up or down by 2–3 positions. This sensitivity suggests that learned weights (from user feedback) would significantly outperform hand-tuned ones.
+**Manual testing** via the Streamlit UI confirmed:
+- Genre detection correctly surfaces rnb songs for "a happy rnb song" and pop songs for "a happy pop song"
+- Low-energy queries ("calm study rainy day") consistently return songs with `energy < 0.45`
+- The phrase "low energy" correctly triggers `energy ↓` rather than matching the shorter positive keyword "energy"
+- BPM queries ("high bpm", "low bpm") correctly use normalized tempo values from the CSV
 
 ---
 
