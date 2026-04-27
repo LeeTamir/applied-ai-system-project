@@ -8,6 +8,12 @@ This project (VibeFinder 2.0) extends that foundation by adding a **RAG-powered 
 
 ---
 
+## Demo Walkthrough
+
+[Watch the demo on Loom](https://www.loom.com/share/e7b57cc13dc046159584e32ea0d59843)
+
+---
+
 ## Title and Summary
 
 **VibeFinder** is a music recommendation system that lets users describe what they want to hear in plain English — *"something calm and acoustic for studying"* — and returns the best matches from a 50-song catalog. It works in two modes:
