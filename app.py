@@ -11,6 +11,15 @@ FEATURE_LABELS = {
     "danceability": "🕺 danceability",
 }
 
+# How to render each feature as a song tag
+FEATURE_TAG_FN = {
+    "energy":       lambda s: f"energy {s['energy']}",
+    "danceability": lambda s: f"dance {s['danceability']}",
+    "acousticness": lambda s: f"acoustic {s['acousticness']}",
+    "valence":      lambda s: f"valence {s['valence']}",
+    "tempo_bpm":    lambda s: f"{s['tempo_bpm']} BPM",
+}
+
 
 @st.cache_resource(show_spinner="Loading song catalog and AI model...")
 def load_retriever():
@@ -64,9 +73,16 @@ if search:
             with col_info:
                 st.markdown(f"**{rank}. {song['title']}** &nbsp; *{song['artist']}*")
 
-                tags = [song["genre"], song["mood"], f"energy {song['energy']}"]
-                if float(song.get("acousticness", 0)) >= 0.65:
-                    tags.append("acoustic")
+                tags = [song["genre"], song["mood"]]
+                detected_features = [f for f in details["detected"] if not f.startswith("genre:")]
+                if detected_features:
+                    for feat in detected_features:
+                        if feat in FEATURE_TAG_FN:
+                            tags.append(FEATURE_TAG_FN[feat](song))
+                else:
+                    tags.append(f"energy {song['energy']}")
+                    if float(song.get("acousticness", 0)) >= 0.65:
+                        tags.append("acoustic")
                 st.markdown(" &nbsp;·&nbsp; ".join(f"`{t}`" for t in tags))
 
             with col_score:

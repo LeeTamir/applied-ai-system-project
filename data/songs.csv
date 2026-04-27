@@ -17,3 +17,35 @@ id,title,artist,genre,mood,energy,tempo_bpm,valence,danceability,acousticness
 16,Neon Pulse,Vector Drift,edm,euphoric,0.92,128,0.86,0.91,0.07
 17,Velvet Hours,Luna Vale,rnb,romantic,0.55,92,0.73,0.78,0.39
 18,Mountain Letters,Pine Harbor,folk,reflective,0.33,84,0.58,0.49,0.88
+19,Neon Garden,Prism Wave,pop,happy,0.78,112,0.83,0.82,0.20
+20,Echo Chamber,Static Blue,rock,moody,0.83,138,0.42,0.68,0.14
+21,Morning Pages,Quiet Harbor,lofi,focused,0.38,76,0.61,0.55,0.82
+22,Drift Away,Coastal Dream,ambient,relaxed,0.24,65,0.68,0.38,0.90
+23,Brass Cadence,The Tempo Trio,jazz,confident,0.62,108,0.74,0.72,0.68
+24,Retrograde,Midnight Chrome,synthwave,moody,0.78,118,0.44,0.76,0.18
+25,Bloom Season,Tangerine Sky,indie pop,uplifting,0.72,126,0.79,0.78,0.42
+26,Street Poet,Block Theory,hip hop,confident,0.76,94,0.65,0.84,0.10
+27,Shatter,Iron Lung,metal,aggressive,0.97,184,0.22,0.54,0.05
+28,Blue Ridge Morning,Cedar & Stone,country,nostalgic,0.43,95,0.69,0.56,0.80
+29,Frequency Drop,Bass Array,edm,euphoric,0.89,132,0.81,0.93,0.06
+30,Honey & Smoke,Amber Vale,rnb,romantic,0.52,88,0.76,0.73,0.44
+31,River Road,Drifting Pines,folk,reflective,0.29,88,0.55,0.46,0.91
+32,Glass Ceiling,Nova Script,hip hop,aggressive,0.84,98,0.38,0.82,0.09
+33,Northern Lights,Frost Signal,synthwave,euphoric,0.85,122,0.72,0.80,0.12
+34,Sunday Slow,LoRoom,lofi,relaxed,0.32,70,0.67,0.52,0.88
+35,Requiem Drift,Aurora Quartet,classical,melancholic,0.18,58,0.28,0.22,0.96
+36,Harbor Groove,Sun Tide,reggae,uplifting,0.58,85,0.80,0.71,0.50
+37,Overcast,Hollow Frame,indie pop,moody,0.65,118,0.48,0.66,0.52
+38,Fire Season,Ember Grid,pop,intense,0.88,120,0.62,0.85,0.08
+39,Late Night Study,Quiet Harbor,lofi,focused,0.36,74,0.55,0.58,0.83
+40,Thunder Road,Voltline,rock,intense,0.89,148,0.45,0.70,0.11
+41,Signal & Noise,Vector Drift,edm,euphoric,0.91,138,0.78,0.90,0.05
+42,Slow Burn,Amber Vale,rnb,melancholic,0.47,84,0.45,0.64,0.52
+43,Wildwood Trail,Willow Creek,country,nostalgic,0.51,108,0.70,0.62,0.72
+44,Obsidian Crown,Crimson Forge,metal,aggressive,0.93,170,0.25,0.51,0.04
+45,Cathedral Fog,Orbit Bloom,ambient,melancholic,0.21,62,0.38,0.34,0.94
+46,Afterglow,Luna Vale,rnb,romantic,0.61,96,0.78,0.80,0.35
+47,Pinewood Sessions,Pine Harbor,folk,nostalgic,0.38,95,0.63,0.52,0.85
+48,Midnight Sermon,Indigo Parade,hip hop,moody,0.72,90,0.42,0.79,0.15
+49,Ballroom Ghost,The Tempo Trio,jazz,romantic,0.44,96,0.66,0.60,0.76
+50,Glitter & Ash,Prism Wave,pop,uplifting,0.75,108,0.85,0.77,0.22
